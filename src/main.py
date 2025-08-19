@@ -7,14 +7,18 @@ from experiment.confidence import ConfidenceExperiment
 from config.base_models import DatasetChoice, DATASET_CONFIGS, ExperimentConfig
 # Example usage and testing functions
 from dotenv import load_dotenv, find_dotenv
+from config.constants import ModelProvider, ExperimentConstants, APIConstants
 
 load_dotenv(find_dotenv())  # Load environment variables from .env file
 # Define the different confidence schema variants
 
 def test_single_prediction():
     """Test a single prediction to verify the setup works"""
-    judge = LLMJudge("gpt-4o-mini")  # Make sure to set your API key
-    
+    judge = LLMJudge(
+        "gpt-4o-mini",
+        temperature=APIConstants.DEFAULT_TEMPERATURE,
+        max_retries=ExperimentConstants.DEFAULT_MAX_RETRIES
+    )    
     # Test with both datasets
     test_cases = {
         DatasetChoice.SST2: "This movie was absolutely fantastic! I loved every minute of it.",

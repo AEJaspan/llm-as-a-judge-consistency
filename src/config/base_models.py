@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Literal, List
 from enum import Enum
 from dataclasses import dataclass
-
+from config.constants import ExperimentConstants
 
 
 class PredictionFloat(BaseModel):
@@ -57,10 +57,16 @@ CATEGORICAL_TO_FLOAT = {
 @dataclass
 class ExperimentConfig:
     dataset_choice: DatasetChoice
-    sample_size: int = 1000
+    sample_size: int = ExperimentConstants.MIN_SAMPLE_SIZE  # Use constant instead of 1000
     models: List[str] = None
     confidence_types: List[str] = None
-    
+    def __post_init__(self):
+        # Validate sample size using constants
+        if self.sample_size < ExperimentConstants.MIN_SAMPLE_SIZE:
+            raise ValueError(f"Sample size must be at least {ExperimentConstants.MIN_SAMPLE_SIZE}")
+        if self.sample_size > ExperimentConstants.MAX_SAMPLE_SIZE:
+            raise ValueError(f"Sample size cannot exceed {ExperimentConstants.MAX_SAMPLE_SIZE}")
+
     @property
     def dataset_config(self):
         """Get the configuration for the selected dataset"""

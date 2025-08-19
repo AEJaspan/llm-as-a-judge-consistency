@@ -12,21 +12,44 @@ from config.base_models import (
 )
 from logger import logger
 
+from config.constants import ModelProvider, APIConstants, ExperimentConstants
 
 class LLMJudge:
-    def __init__(self, model_name: str, temperature: float = 0.0, max_retries: int = 3):
+    def __init__(
+            self,
+            model_name: str,
+            temperature: float = APIConstants.DEFAULT_TEMPERATURE,
+            max_retries: int = ExperimentConstants.DEFAULT_MAX_RETRIES
+        ):
         self.model_name = model_name
         self.temperature = temperature
         self.max_retries = max_retries
         self.model = self._initialize_model()
+
+
+    def _get_provider(self) -> ModelProvider:
+        """Determine provider from model name using enum."""
+        model_lower = self.model_name.lower()
         
+        if "gpt" in model_lower or "openai" in model_lower:
+            return ModelProvider.OPENAI
+        elif "claude" in model_lower or "anthropic" in model_lower:
+            return ModelProvider.ANTHROPIC
+        elif "gemini" in model_lower or "google" in model_lower:
+            return ModelProvider.GOOGLE
+        else:
+            raise ValueError(f"Unknown provider for model: {self.model_name}")
+    
     def _initialize_model(self):
         """Initialize the appropriate LangChain model based on model_name"""
-        if "gpt" in self.model_name.lower() or "openai" in self.model_name.lower():
+        provider = self._get_provider()
+        
+        if provider == ModelProvider.OPENAI:
             return ChatOpenAI(
                 model=self.model_name,
                 temperature=self.temperature,
-                max_retries=self.max_retries
+                max_retries=self.max_retries,
+                timeout=ExperimentConstants.DEFAULT_TIMEOUT  # Use constant
             )
         else:
             raise ValueError(f"Unsupported model: {self.model_name}")

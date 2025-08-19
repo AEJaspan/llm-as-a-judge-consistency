@@ -10,8 +10,11 @@ import asyncio
 from tqdm import tqdm
 from config.base_models import (
     DatasetChoice,
-    ExperimentConfig
+    ExperimentConfig,
+    CATEGORICAL_TO_FLOAT
 )
+from config.constants import ExperimentConstants, APIConstants
+
 from experiment.classifier import LLMJudge
 from logger import logger
 
@@ -112,7 +115,7 @@ class ConfidenceExperiment:
         
         # Execute all tasks concurrently with progress tracking
         results = []
-        batch_size = 100  # Process in batches to avoid overwhelming APIs
+        batch_size = ExperimentConstants.DEFAULT_BATCH_SIZE
         counter = tqdm(total=len(all_tasks), desc="Processing tasks", unit=" task")
         for i in range(0, len(all_tasks), batch_size):
             batch_tasks = all_tasks[i:i + batch_size]
