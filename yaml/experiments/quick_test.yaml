@@ -1,0 +1,10 @@
+name: "quick_test_experiment"
+description: "Quick test with minimal samples for development"
+dataset_choice: "sms_spam"
+sample_size: 5
+models:
+  - "gpt-4o-mini"
+confidence_types:
+  - "float"
+trials_per_config: 2
+max_concurrent_requests: 3

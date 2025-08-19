@@ -1,0 +1,12 @@
+name: "confidence_format_study"
+description: "Study different confidence formats with single model"
+dataset_choice: "sst2"
+sample_size: 75
+models:
+  - "gpt-4o"
+confidence_types:
+  - "float"
+  - "categorical"
+  - "integer"
+trials_per_config: 5
+max_concurrent_requests: 3
