@@ -13,10 +13,9 @@ from config.base_models import (
     ExperimentConfig,
     CATEGORICAL_TO_FLOAT
 )
-from config.constants import ExperimentConstants, APIConstants
+from config.constants import ExperimentConstants
 
 from experiment.classifier import LLMJudge
-from logger import logger
 
 class ConfidenceExperiment:
     def __init__(self, config: ExperimentConfig, max_concurrent_requests: int = 5):
@@ -130,8 +129,8 @@ class ConfidenceExperiment:
                     print(f"    Error in task: {task_result}")
                     # Use fallback result for failed tasks
                     task_result = {
-                        "classification": None,  # Default to true label
-                        "confidence": None  # Neutral confidence
+                        "classification": None, 
+                        "confidence": None 
                     }
                 
                 # Normalize confidence to 0-1 scale for analysis

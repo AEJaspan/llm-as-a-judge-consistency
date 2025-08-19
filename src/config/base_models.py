@@ -57,7 +57,7 @@ CATEGORICAL_TO_FLOAT = {
 @dataclass
 class ExperimentConfig:
     dataset_choice: DatasetChoice
-    sample_size: int = ExperimentConstants.MIN_SAMPLE_SIZE  # Use constant instead of 1000
+    sample_size: int = ExperimentConstants.MIN_SAMPLE_SIZE
     models: List[str] = None
     confidence_types: List[str] = None
     def __post_init__(self):

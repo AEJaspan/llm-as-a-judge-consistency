@@ -105,9 +105,8 @@ Be thoughtful about your confidence level - consider factors like:
             PredictionInteger: {"classification": False, "confidence": 2}
         }
         
-        # Add some randomness to classification
         response = fallbacks[schema].copy()
-        response["classification"] = np.random.choice([True, False])
+        response["classification"] = None
         return response
     
     async def _execute_with_retry(self, chain, text: str, schema: Type[BaseModel]) -> Dict:
@@ -150,7 +149,6 @@ Be thoughtful about your confidence level - consider factors like:
         try:
             chain, schema = self._create_chain(confidence_type, system_prompt)
             
-            # Single attempt for sync version (simpler)
             try:
                 result = chain.invoke({"text": text})
                 return {

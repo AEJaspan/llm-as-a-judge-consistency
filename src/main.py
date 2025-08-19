@@ -5,12 +5,10 @@ import asyncio
 from experiment.classifier import LLMJudge
 from experiment.confidence import ConfidenceExperiment
 from config.base_models import DatasetChoice, DATASET_CONFIGS, ExperimentConfig
-# Example usage and testing functions
 from dotenv import load_dotenv, find_dotenv
-from config.constants import ModelProvider, ExperimentConstants, APIConstants
+from config.constants import ExperimentConstants, APIConstants
 
-load_dotenv(find_dotenv())  # Load environment variables from .env file
-# Define the different confidence schema variants
+load_dotenv(find_dotenv())
 
 def test_single_prediction():
     """Test a single prediction to verify the setup works"""
@@ -45,7 +43,7 @@ def run_sst2_experiment():
     """Run experiment on SST-2 dataset"""
     config = ExperimentConfig(
         dataset_choice=DatasetChoice.SST2,
-        sample_size=20,  # Smaller for testing
+        sample_size=20,
         models=["gpt-4o-mini", "gpt-4o"],
         confidence_types=["float", "categorical", "integer"]
     )
@@ -57,7 +55,7 @@ def run_sms_spam_experiment():
     """Run experiment on SMS Spam dataset"""
     config = ExperimentConfig(
         dataset_choice=DatasetChoice.SMS_SPAM,
-        sample_size=20,  # Smaller for testing
+        sample_size=20,
         models=["gpt-4o-mini", "gpt-4o"],
         confidence_types=["float", "categorical", "integer"]
     )
@@ -86,22 +84,6 @@ async def main():
     
     # Save results
     results_df.to_csv('llm_confidence_experiment_results.csv', index=False)
-    def find_invalid_keys(data, path=""):
-        """Recursively finds and prints invalid keys in a dictionary."""
-        if isinstance(data, dict):
-            for key, value in data.items():
-                if not isinstance(key, (str, int, float, bool, type(None))):
-                    print(f"Invalid key type found: {type(key)}")
-                    print(f"Problematic key at path '{path}': {key}")
-                    # You can stop here or continue to find all invalid keys
-                    return
-                # Recursively check the value if it's a dictionary
-                find_invalid_keys(value, path=f"{path}['{key}']")
-
-    # Insert this code right before your json.dump call
-    print("Now performing a deep check for non-serializable keys...")
-    find_invalid_keys(analyses)
-    print("Deep check passed. Saving now...")
     with open('llm_confidence_analyses.json', 'w') as f:
         json.dump(analyses, f, indent=2, default=str)
     
