@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "LLMaaJExperiment"
+version = "0.1.0"
+description = "An experiment on LLM confidence"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "datasets>=4.0.0",
+    "langchain-core>=0.3.74",
+    "langchain-openai>=0.3.30",
+    "matplotlib>=3.10.5",
+    "numpy>=2.2.6",
+    "pandas>=2.3.1",
+    "python-dotenv>=1.1.1",
+    "scikit-learn>=1.7.1",
+    "seaborn>=0.13.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
