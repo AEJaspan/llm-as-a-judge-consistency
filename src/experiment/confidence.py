@@ -13,7 +13,7 @@ from config.base_models import (
     ExperimentConfig
 )
 from experiment.classifier import LLMJudge
-
+from logger import logger
 
 class ConfidenceExperiment:
     def __init__(self, config: ExperimentConfig, max_concurrent_requests: int = 5):

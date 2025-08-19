@@ -1,8 +1,9 @@
 
 from pydantic import BaseModel, Field
+
 from typing import Literal, List
-from dataclasses import dataclass
 from enum import Enum
+from dataclasses import dataclass
 
 
 
@@ -53,7 +54,6 @@ CATEGORICAL_TO_FLOAT = {
     "high": 3.0/5,
     "very high": 4.0/5
 }
-
 @dataclass
 class ExperimentConfig:
     dataset_choice: DatasetChoice

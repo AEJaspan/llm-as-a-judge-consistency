@@ -61,10 +61,10 @@ def run_sms_spam_experiment():
     experiment = ConfidenceExperiment(config)
     return experiment
 
-async def main(config: ExperimentConfig):   
+async def main():   
     config = ExperimentConfig(
         dataset_choice=DatasetChoice.SMS_SPAM,
-        sample_size=50,
+        sample_size=10,
         models = ["gpt-4o-mini", "gpt-4o"],
         # ["gpt-3.5-turbo", "claude-3-5-sonnet-20241022"],
         confidence_types=["float", "categorical", "integer"]
@@ -233,11 +233,11 @@ if __name__ == "__main__":
     
     print("\n=== Running Full Experiment ===")
     # Run the full experiment
-    sst2_results, spam_results, sst2_analyses, spam_analyses = run_both_experiments()
-    # results_df, analyses = asyncio.run(main())
+    # sst2_results, spam_results, sst2_analyses, spam_analyses = run_both_experiments()
+    results_df, analyses = asyncio.run(main())
 
-    # for results_df, analyses in [(results_df, analyses)]:
-    for results_df, analyses in [(sst2_results, sst2_analyses), (spam_results, spam_analyses)]:
+    for results_df, analyses in [(results_df, analyses)]:
+    # for results_df, analyses in [(sst2_results, sst2_analyses), (spam_results, spam_analyses)]:
         # Additional statistical testing
         test_confidence_format_significance(results_df)
         
