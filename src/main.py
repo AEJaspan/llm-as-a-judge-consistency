@@ -298,6 +298,7 @@ async def main():
             configs = []
             for config_name in args.config:
                 config_path = f"{args.config_dir}/{config_name}.yaml"
+                print(f"Loading config '{config_name}' from {config_path}")
                 try:
                     config = load_experiment_config(config_path)
                     configs.append(config)

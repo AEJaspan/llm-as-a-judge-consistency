@@ -1,7 +1,7 @@
 name: "quick_test_experiment"
 description: "Quick test with minimal samples for development"
 dataset_choice: "sms_spam"
-sample_size: 5
+sample_size: 10
 models:
   - "gpt-4o-mini"
 confidence_types:

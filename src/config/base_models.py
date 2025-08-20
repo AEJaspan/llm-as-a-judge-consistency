@@ -172,12 +172,13 @@ def load_all_configs(config_dir: str = "yaml/experiments") -> List[ExperimentCon
     """Load all experiment configurations from directory"""
     config_path = Path(config_dir)
     configs = []
-    
+    print(f"Loading experiment configurations from {config_path}")
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration directory not found: {config_dir}")
     
     for config_file in config_path.glob("*.yaml"):
         try:
+            print(f"Loading config from {config_file}")
             config = load_experiment_config(str(config_file))
             configs.append(config)
         except Exception as e:
