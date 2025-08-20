@@ -1,9 +1,11 @@
 # Makefile for LLM Confidence Experiment
-.PHONY: help install format lint test run clean setup-env move-assets
+.PHONY: help install format lint test run clean setup-env move-assets full-pipeline
 
 # Default target
 help:
 	@echo "Available commands:"
+	@echo "  setup-env      - Create virtual environment and install dependencies"
+	@echo "  install        - Install dependencies"
 	@echo "  format         - Format code with ruff"
 	@echo "  lint           - Lint code with ruff"
 	@echo "  test           - Run tests with pytest"
@@ -11,6 +13,7 @@ help:
 	@echo "  run-quick      - Run experiment with smaller sample size"
 	@echo "  move-assets    - Move generated plots to assets/ directory"
 	@echo "  clean          - Clean up generated files"
+	@echo "  full-pipeline  - Run complete pipeline: format, lint, test, run, move-assets"
 
 # Python and environment setup
 PYTHON := python3
@@ -18,6 +21,23 @@ VENV := .venv
 PIP := $(VENV)/bin/pip
 PYTHON_VENV := $(VENV)/bin/python
 PYTEST := $(VENV)/bin/pytest
+
+# Setup virtual environment and install dependencies
+setup-env:
+	@echo "Creating virtual environment..."
+	$(PYTHON) -m venv $(VENV)
+	@echo "Installing dependencies..."
+	$(PIP) install --upgrade pip
+	$(PIP) install -e .
+	$(PIP) install ruff pytest pytest-asyncio python-dotenv pyyaml
+	@echo "Virtual environment created at $(VENV)"
+	@echo "Activate with: source $(VENV)/bin/activate"
+
+# Install dependencies (assumes venv is activated)
+install:
+	pip install --upgrade pip
+	pip install -e .
+	pip install ruff pytest pytest-asyncio python-dotenv pyyaml
 
 # Format code with ruff
 format:
@@ -34,15 +54,21 @@ lint:
 # Run tests
 test:
 	@echo "Running tests with pytest..."
-	pytest tests
+	PYTHONPATH=src pytest tests/ -v --tb=short
 	@echo "Tests complete!"
 
-# Run the main experiment
+# Run the main experiment (default: quick test)
 run:
 	@echo "Running LLM confidence experiment..."
 	@echo "Note: This requires OPENAI_API_KEY in your .env file"
 	PYTHONPATH=src $(PYTHON) src/main.py
 	@echo "Experiment complete!"
+
+# Run experiment with quick test configuration
+run-quick:
+	@echo "Running quick test experiment..."
+	PYTHONPATH=src $(PYTHON) src/main.py --config quick_test
+	@echo "Quick test complete!"
 
 # Create assets directory and move plots
 move-assets:
@@ -93,4 +119,22 @@ check-env:
 		echo "WARNING: Virtual environment not found. Run 'make setup-env'"; \
 	else \
 		echo "✓ Virtual environment found"; \
+	fi
+
+# List available experiment configurations
+list-configs:
+	@echo "Available experiment configurations:"
+	PYTHONPATH=src $(PYTHON) src/main.py --list
+
+# Run specific experiment configuration(s)
+run-config:
+	@echo "Usage: make run-config CONFIG=config_name"
+	@echo "   or: make run-config CONFIG='config1 config2'"
+	@if [ -z "$(CONFIG)" ]; then \
+		echo "Error: CONFIG parameter required"; \
+		echo "Available configs:"; \
+		PYTHONPATH=src $(PYTHON) src/main.py --list; \
+	else \
+		echo "Running experiment(s): $(CONFIG)"; \
+		PYTHONPATH=src $(PYTHON) src/main.py --config $(CONFIG); \
 	fi

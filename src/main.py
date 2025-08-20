@@ -2,103 +2,119 @@ import pandas as pd
 import numpy as np
 import json
 import asyncio
+import argparse
+from pathlib import Path
+from typing import List, Dict, Tuple, Optional
 from experiment.classifier import LLMJudge
 from experiment.confidence import ConfidenceExperiment
-from config.base_models import DatasetChoice, DATASET_CONFIGS, ExperimentConfig
+from config.base_models import (
+    DatasetChoice, 
+    DATASET_CONFIGS, 
+    ExperimentConfig,
+    load_experiment_config,
+    list_available_configs,
+    load_all_configs
+)
 from dotenv import load_dotenv, find_dotenv
 from config.constants import ExperimentConstants, APIConstants
+from scipy.stats import kruskal, mannwhitneyu
 
 load_dotenv(find_dotenv())
 
 
-def test_single_prediction():
+def test_single_prediction(config: ExperimentConfig) -> None:
     """Test a single prediction to verify the setup works"""
+    print(f"=== Testing Single Prediction for {config.name} ===")
+    
     judge = LLMJudge(
-        "gpt-4o-mini",
+        config.models[0],  # Use first model for testing
         temperature=APIConstants.DEFAULT_TEMPERATURE,
         max_retries=ExperimentConstants.DEFAULT_MAX_RETRIES,
     )
-    # Test with both datasets
+    
+    # Test cases for different datasets
     test_cases = {
-        DatasetChoice.SST2: "This movie was absolutely fantastic! I loved every minute of it.",
-        DatasetChoice.SMS_SPAM: "URGENT: You've won £1000! Text CLAIM to 88888 now!",
+        "sst2": "This movie was absolutely fantastic! I loved every minute of it.",
+        "sms_spam": "URGENT: You've won £1000! Text CLAIM to 88888 now!",
     }
-
-    print("Testing single predictions...")
-    for dataset_choice, test_text in test_cases.items():
-        config = DATASET_CONFIGS[dataset_choice]
-        print(f"\n{dataset_choice.value.upper()} Dataset:")
-        print(f"Text: {test_text}")
-        print(f"Task: {config['task_description']}")
-
-        for conf_type in ["float", "categorical", "integer"]:
-            try:
-                result = judge.classify_with_confidence_sync(
-                    test_text, conf_type, config["task_description"]
-                )
-                print(f"  {conf_type}: {result}")
-            except Exception as e:
-                print(f"  Error with {conf_type}: {e}")
-
-
-def run_sst2_experiment():
-    """Run experiment on SST-2 dataset"""
-    config = ExperimentConfig(
-        dataset_choice=DatasetChoice.SST2,
-        sample_size=20,
-        models=["gpt-4o-mini", "gpt-4o"],
-        confidence_types=["float", "categorical", "integer"],
-    )
-
-    experiment = ConfidenceExperiment(config)
-    return experiment
+    
+    test_text = test_cases.get(config.dataset_choice, "Test message for classification.")
+    dataset_config = config.dataset_config
+    
+    print(f"Dataset: {config.dataset_choice.upper()}")
+    print(f"Text: {test_text}")
+    print(f"Task: {dataset_config['task_description']}")
+    print(f"Model: {config.models[0]}")
+    
+    for conf_type in config.confidence_types:
+        try:
+            result = judge.classify_with_confidence_sync(
+                test_text, conf_type, dataset_config["task_description"]
+            )
+            print(f"  {conf_type}: {result}")
+        except Exception as e:
+            print(f"  Error with {conf_type}: {e}")
 
 
-def run_sms_spam_experiment():
-    """Run experiment on SMS Spam dataset"""
-    config = ExperimentConfig(
-        dataset_choice=DatasetChoice.SMS_SPAM,
-        sample_size=20,
-        models=["gpt-4o-mini", "gpt-4o"],
-        confidence_types=["float", "categorical", "integer"],
-    )
-
-    experiment = ConfidenceExperiment(config)
-    return experiment
-
-
-async def main():
-    config = ExperimentConfig(
-        dataset_choice=DatasetChoice.SMS_SPAM,
-        sample_size=10,
-        models=["gpt-4o-mini", "gpt-4o"],
-        # ["gpt-3.5-turbo", "claude-3-5-sonnet-20241022"],
-        confidence_types=["float", "categorical", "integer"],
-    )
-
-    # Run experiment
-    experiment = ConfidenceExperiment(config)
+async def run_single_experiment(config: ExperimentConfig) -> Tuple[pd.DataFrame, Dict]:
+    """Run a single experiment with the given configuration"""
+    print(f"\n=== Running Experiment: {config.name} ===")
+    print(f"Description: {config.description}")
+    print(f"Dataset: {config.dataset_choice}")
+    print(f"Sample size: {config.sample_size}")
+    print(f"Models: {config.models}")
+    print(f"Confidence types: {config.confidence_types}")
+    print(f"Trials per config: {config.trials_per_config}")
+    
+    # Create and run experiment
+    experiment = ConfidenceExperiment(config, max_concurrent_requests=config.max_concurrent_requests)
     results_df = await experiment.run_experiment()
-
+    
     # Analyze results
     analyses = experiment.analyze_results(results_df)
-
+    
     # Create visualizations
-    experiment.create_visualizations(results_df, analyses)
-
-    # Save results
-    results_df.to_csv("llm_confidence_experiment_results.csv", index=False)
-    with open("llm_confidence_analyses.json", "w") as f:
+    plot_filename = experiment.create_visualizations(results_df, analyses)
+    
+    # Save results with experiment name
+    results_filename = f"llm_confidence_experiment_results_{config.name}.csv"
+    analyses_filename = f"llm_confidence_analyses_{config.name}.json"
+    
+    results_df.to_csv(results_filename, index=False)
+    with open(analyses_filename, "w") as f:
         json.dump(analyses, f, indent=2, default=str)
-
+    
+    print(f"✓ Experiment '{config.name}' completed!")
+    print(f"  Results: {results_filename}")
+    print(f"  Analysis: {analyses_filename}")
+    print(f"  Plot: {plot_filename}")
+    
     return results_df, analyses
 
 
-# Statistical significance testing functions
-def test_confidence_format_significance(results_df):
-    """Test if different confidence formats lead to significantly different consistency"""
-    from scipy.stats import kruskal, mannwhitneyu
+async def run_multiple_experiments(configs: List[ExperimentConfig]) -> List[Tuple[pd.DataFrame, Dict, str]]:
+    """Run multiple experiments sequentially"""
+    results = []
+    
+    for i, config in enumerate(configs, 1):
+        print(f"\n{'='*60}")
+        print(f"EXPERIMENT {i}/{len(configs)}: {config.name}")
+        print(f"{'='*60}")
+        
+        try:
+            results_df, analyses = await run_single_experiment(config)
+            results.append((results_df, analyses, config.name))
+        except Exception as e:
+            print(f"❌ Experiment '{config.name}' failed: {e}")
+            continue
+    
+    return results
 
+
+def test_confidence_format_significance(results_df: pd.DataFrame, experiment_name: str) -> None:
+    """Test if different confidence formats lead to significantly different consistency"""
+    print(f"\n=== Statistical Significance Analysis: {experiment_name} ===")
+    
     # Calculate consistency metric for each text-model-format combination
     consistency_data = []
     for (model, text_id), group in results_df.groupby(["model", "text_id"]):
@@ -120,6 +136,10 @@ def test_confidence_format_significance(results_df):
                     }
                 )
 
+    if not consistency_data:
+        print("❌ No consistency data available for statistical testing")
+        return
+
     consistency_df = pd.DataFrame(consistency_data)
 
     # Kruskal-Wallis test for differences between confidence formats
@@ -127,139 +147,215 @@ def test_confidence_format_significance(results_df):
         group["consistency"].values
         for name, group in consistency_df.groupby("confidence_type")
     ]
-    h_stat, p_value = kruskal(*groups)
+    
+    if len(groups) > 2:
+        h_stat, p_value = kruskal(*groups)
+        print(f"Kruskal-Wallis test for confidence format differences:")
+        print(f"  H-statistic: {h_stat:.3f}, p-value: {p_value:.3f}")
+        
+        # Pairwise comparisons
+        conf_types = consistency_df["confidence_type"].unique()
+        print("\nPairwise comparisons:")
+        for i, type1 in enumerate(conf_types):
+            for type2 in conf_types[i + 1 :]:
+                group1 = consistency_df[consistency_df["confidence_type"] == type1][
+                    "consistency"
+                ].values
+                group2 = consistency_df[consistency_df["confidence_type"] == type2][
+                    "consistency"
+                ].values
 
-    print("Kruskal-Wallis test for confidence format differences:")
-    print(f"H-statistic: {h_stat:.3f}, p-value: {p_value:.3f}")
-
-    # Pairwise comparisons
-    conf_types = consistency_df["confidence_type"].unique()
-    for i, type1 in enumerate(conf_types):
-        for type2 in conf_types[i + 1 :]:
-            group1 = consistency_df[consistency_df["confidence_type"] == type1][
-                "consistency"
-            ].values
-            group2 = consistency_df[consistency_df["confidence_type"] == type2][
-                "consistency"
-            ].values
-
-            u_stat, p_val = mannwhitneyu(group1, group2, alternative="two-sided")
-            print(
-                f"{type1} vs {type2}: U-statistic: {u_stat:.3f}, p-value: {p_val:.3f}"
-            )
+                u_stat, p_val = mannwhitneyu(group1, group2, alternative="two-sided")
+                significance = "**" if p_val < 0.01 else "*" if p_val < 0.05 else ""
+                print(f"  {type1} vs {type2}: U={u_stat:.3f}, p={p_val:.3f} {significance}")
 
 
-# Additional utility functions for dataset comparison
-def compare_dataset_results(sst2_results_file: str, spam_results_file: str):
-    """Compare results between SST2 and SMS spam experiments"""
-    sst2_df = pd.read_csv(sst2_results_file)
-    spam_df = pd.read_csv(spam_results_file)
-
-    print("=== DATASET COMPARISON ===")
-
-    # Basic stats comparison
-    print("\nBasic Statistics:")
-    for name, df in [("SST2", sst2_df), ("SMS_SPAM", spam_df)]:
-        accuracy = df["correct"].mean()
-        mean_confidence = df["normalized_confidence"].mean()
-        print(f"{name}: Accuracy={accuracy:.3f}, Mean Confidence={mean_confidence:.3f}")
-
-    # Consistency comparison
-    print("\nConsistency (CV by confidence type):")
-    for df, name in [(sst2_df, "SST2"), (spam_df, "SMS_SPAM")]:
-        print(f"\n{name}:")
-        for conf_type in df["confidence_type"].unique():
-            type_data = df[df["confidence_type"] == conf_type]
-            # Calculate consistency per text
-            consistency_scores = []
-            for text_id in type_data["text_id"].unique():
-                text_data = type_data[type_data["text_id"] == text_id]
-                if len(text_data) > 1:
-                    cv = np.std(text_data["normalized_confidence"]) / np.mean(
-                        text_data["normalized_confidence"]
-                    )
+def compare_experiment_results(experiment_results: List[Tuple[pd.DataFrame, Dict, str]]) -> None:
+    """Compare results across multiple experiments"""
+    if len(experiment_results) < 2:
+        print("❌ Need at least 2 experiments for comparison")
+        return
+    
+    print(f"\n{'='*60}")
+    print("CROSS-EXPERIMENT COMPARISON")
+    print(f"{'='*60}")
+    
+    comparison_data = []
+    
+    for results_df, analyses, name in experiment_results:
+        dataset_name = results_df["dataset"].iloc[0] if "dataset" in results_df.columns else "unknown"
+        accuracy = results_df["correct"].mean()
+        mean_confidence = results_df["normalized_confidence"].mean()
+        
+        # Calculate overall consistency
+        consistency_scores = []
+        for (model, conf_type), group in results_df.groupby(["model", "confidence_type"]):
+            for text_id, text_group in group.groupby("text_id"):
+                confidences = text_group["normalized_confidence"].values
+                if len(confidences) > 1:
+                    cv = np.std(confidences) / np.mean(confidences) if np.mean(confidences) > 0 else 0
                     consistency_scores.append(cv)
+        
+        mean_consistency = np.mean(consistency_scores) if consistency_scores else float('nan')
+        
+        comparison_data.append({
+            "experiment": name,
+            "dataset": dataset_name,
+            "accuracy": accuracy,
+            "mean_confidence": mean_confidence,
+            "mean_consistency_cv": mean_consistency,
+            "sample_size": len(results_df["text_id"].unique()),
+            "total_predictions": len(results_df)
+        })
+    
+    comparison_df = pd.DataFrame(comparison_data)
+    print("\nExperiment Summary:")
+    print(comparison_df.round(3).to_string(index=False))
+    
+    # Save comparison
+    comparison_df.to_csv("experiment_comparison_results.csv", index=False)
+    print("\n✓ Comparison saved to experiment_comparison_results.csv")
 
-            if consistency_scores:
-                print(f"  {conf_type}: CV = {np.mean(consistency_scores):.3f}")
 
-
-def run_both_experiments():
-    """Convenience function to run both experiments sequentially"""
-
-    print("=== RUNNING SST2 EXPERIMENT ===")
-    sst2_config = ExperimentConfig(
-        dataset_choice=DatasetChoice.SST2,
-        sample_size=100,
-        models=["gpt-4o-mini", "gpt-4o"],
-        confidence_types=["float", "categorical", "integer"],
+def create_argument_parser() -> argparse.ArgumentParser:
+    """Create command line argument parser"""
+    parser = argparse.ArgumentParser(
+        description="LLM Confidence Experiment Runner",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python main.py --list                           # List available configs
+  python main.py --config quick_test              # Run single experiment
+  python main.py --config sst2_full sms_spam_full # Run multiple experiments
+  python main.py --all                            # Run all available experiments
+  python main.py --test-only --config quick_test  # Just test setup
+        """
     )
-
-    sst2_experiment = ConfidenceExperiment(sst2_config)
-    sst2_results = asyncio.run(sst2_experiment.run_experiment())
-    sst2_analyses = sst2_experiment.analyze_results(sst2_results)
-    sst2_experiment.create_visualizations(sst2_results, sst2_analyses)
-
-    # Save SST2 results
-    sst2_results.to_csv("llm_confidence_experiment_results_sst2.csv", index=False)
-
-    print("\n" + "=" * 50)
-    print("=== RUNNING SMS SPAM EXPERIMENT ===")
-
-    spam_config = ExperimentConfig(
-        dataset_choice=DatasetChoice.SMS_SPAM,
-        sample_size=100,
-        models=["gpt-4o-mini", "gpt-4o"],
-        confidence_types=["float", "categorical", "integer"],
+    
+    parser.add_argument(
+        "--config", "-c",
+        nargs="+",
+        help="Configuration file(s) to run (without .yaml extension)"
     )
-
-    spam_experiment = ConfidenceExperiment(spam_config)
-    spam_results = asyncio.run(spam_experiment.run_experiment())
-    spam_analyses = spam_experiment.analyze_results(spam_results)
-    spam_experiment.create_visualizations(spam_results, spam_analyses)
-
-    # Save spam results
-    spam_results.to_csv("llm_confidence_experiment_results_sms_spam.csv", index=False)
-
-    print("\n" + "=" * 50)
-    print("=== COMPARING RESULTS ===")
-
-    compare_dataset_results(
-        "llm_confidence_experiment_results_sst2.csv",
-        "llm_confidence_experiment_results_sms_spam.csv",
+    
+    parser.add_argument(
+        "--all", "-a",
+        action="store_true",
+        help="Run all available experiment configurations"
     )
+    
+    parser.add_argument(
+        "--list", "-l",
+        action="store_true",
+        help="List all available experiment configurations"
+    )
+    
+    parser.add_argument(
+        "--test-only", "-t",
+        action="store_true",
+        help="Only run single prediction test, skip full experiment"
+    )
+    
+    parser.add_argument(
+        "--config-dir",
+        default="yaml/experiments",
+        help="Directory containing experiment configuration files"
+    )
+    
+    parser.add_argument(
+        "--no-stats",
+        action="store_true",
+        help="Skip statistical significance testing"
+    )
+    
+    return parser
 
-    return sst2_results, spam_results, sst2_analyses, spam_analyses
+
+async def main():
+    """Main function to orchestrate experiment execution"""
+    parser = create_argument_parser()
+    args = parser.parse_args()
+    
+    # List available configurations
+    if args.list:
+        configs = list_available_configs(args.config_dir)
+        if configs:
+            print("Available experiment configurations:")
+            for config in configs:
+                print(f"  - {config}")
+        else:
+            print(f"No configuration files found in {args.config_dir}")
+        return
+    
+    # Load configurations
+    try:
+        if args.all:
+            configs = load_all_configs(args.config_dir)
+            if not configs:
+                print(f"❌ No valid configurations found in {args.config_dir}")
+                return
+        elif args.config:
+            configs = []
+            for config_name in args.config:
+                config_path = f"{args.config_dir}/{config_name}.yaml"
+                print(f"Loading config '{config_name}' from {config_path}")
+                try:
+                    config = load_experiment_config(config_path)
+                    configs.append(config)
+                except Exception as e:
+                    print(f"❌ Failed to load config '{config_name}': {e}")
+        else:
+            # Default: run quick test
+            config_path = f"{args.config_dir}/quick_test.yaml"
+            configs = [load_experiment_config(config_path)]
+            
+    except Exception as e:
+        print(f"❌ Error loading configurations: {e}")
+        return
+    
+    if not configs:
+        print("❌ No valid configurations to run")
+        return
+    
+    print(f"Loaded {len(configs)} experiment configuration(s)")
+    
+    # Test setup for first configuration
+    print("\n" + "="*60)
+    print("SETUP VERIFICATION")
+    print("="*60)
+    test_single_prediction(configs[0])
+    
+    if args.test_only:
+        print("\n✓ Test completed successfully!")
+        return
+    
+    # Run experiments
+    print(f"\n{'='*60}")
+    print("RUNNING EXPERIMENTS")
+    print(f"{'='*60}")
+    
+    experiment_results = await run_multiple_experiments(configs)
+    
+    if not experiment_results:
+        print("❌ No experiments completed successfully")
+        return
+    
+    # Statistical analysis for each experiment
+    if not args.no_stats:
+        for results_df, analyses, name in experiment_results:
+            test_confidence_format_significance(results_df, name)
+    
+    # Cross-experiment comparison
+    if len(experiment_results) > 1:
+        compare_experiment_results(experiment_results)
+    
+    print(f"\n{'='*60}")
+    print("EXPERIMENT SUITE COMPLETED")
+    print(f"{'='*60}")
+    print(f"✓ Successfully completed {len(experiment_results)} experiment(s)")
+    print("✓ Results, analyses, and plots have been generated")
+    print("✓ Use 'make move-assets' to organize files into assets/ directory")
 
 
 if __name__ == "__main__":
-    # Test single prediction first
-    print("=== Testing Single Prediction ===")
-    test_single_prediction()
-
-    print("\n=== Running Full Experiment ===")
-    # Run the full experiment
-    sst2_results, spam_results, sst2_analyses, spam_analyses = run_both_experiments()
-    # results_df, analyses = asyncio.run(main())
-
-    # for results_df, analyses in [(results_df, analyses)]:
-    for results_df, analyses in [(sst2_results, sst2_analyses), (spam_results, spam_analyses)]:
-        # Additional statistical testing
-        test_confidence_format_significance(results_df)
-
-        dataset_name = (
-            results_df["dataset"].iloc[0]
-            if "dataset" in results_df.columns
-            else "unknown"
-        )
-        print(f"\nExperiment completed for {dataset_name.upper()} dataset!")
-        print("Generated files:")
-        print(f"- llm_confidence_experiment_results_{dataset_name}.csv")
-        print(f"- llm_confidence_analyses_{dataset_name}.json")
-        print(f"- llm_confidence_experiment_results_{dataset_name}.png")
-
-        print("\n=== QUICK COMPARISON GUIDE ===")
-        print("To compare datasets, run the experiment twice:")
-        print("1. First with DatasetChoice.SST2")
-        print("2. Then with DatasetChoice.SMS_SPAM")
-        print("3. Compare the generated CSV files and plots")
+    asyncio.run(main())

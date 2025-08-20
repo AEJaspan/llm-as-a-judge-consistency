@@ -33,7 +33,7 @@ class ConfidenceExperiment:
         """Load and prepare the dataset"""
         config = self.config.dataset_config
 
-        if self.config.dataset_choice == DatasetChoice.SST2:
+        if self.config.dataset_choice == DatasetChoice.SST2.value:
             dataset = load_dataset(
                 self.config.dataset_name, self.config.dataset_config_name
             )
@@ -41,7 +41,7 @@ class ConfidenceExperiment:
             split_name = "validation" if "validation" in dataset else "train"
             df = pd.DataFrame(dataset[split_name])
 
-        elif self.config.dataset_choice == DatasetChoice.SMS_SPAM:
+        elif self.config.dataset_choice == DatasetChoice.SMS_SPAM.value:
             dataset = load_dataset(
                 self.config.dataset_name, self.config.dataset_config_name
             )
@@ -58,6 +58,10 @@ class ConfidenceExperiment:
                     random_state=42,
                     stratify=df[self.config.label_column],
                 )
+        else:
+            raise ValueError(
+                f"Unsupported dataset choice: {self.config.dataset_choice}"
+            )
 
         # General sampling if needed (for SST2 or if SMS doesn't need stratification)
         if (
@@ -66,7 +70,7 @@ class ConfidenceExperiment:
         ):
             df = df.sample(n=self.config.sample_size, random_state=42)
 
-        print(f"Loaded {self.config.dataset_choice.value} dataset:")
+        print(f"Loaded {self.config.dataset_choice} dataset:")
         print(f"  Description: {config['description']}")
         print(f"  Total samples: {len(df)}")
         print(f"  Text column: '{self.config.text_column}'")
@@ -81,7 +85,7 @@ class ConfidenceExperiment:
     async def run_experiment(self):
         """Run the full experiment with concurrent LLM calls"""
         print(
-            f"=== Starting {self.config.dataset_choice.value.upper()} Confidence Experiment ==="
+            f"=== Starting {self.config.dataset_choice.upper()} Confidence Experiment ==="
         )
         print("Loading dataset...")
         df = self.load_dataset()
@@ -118,7 +122,7 @@ class ConfidenceExperiment:
                         # Store metadata for this task
                         task_metadata.append(
                             {
-                                "dataset": self.config.dataset_choice.value,
+                                "dataset": self.config.dataset_choice,
                                 "model": model_name,
                                 "confidence_type": conf_type,
                                 "trial": trial,
