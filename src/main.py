@@ -12,6 +12,7 @@ from config.base_models import (
     list_available_configs,
     load_all_configs
 )
+from experiment.analysis import run_analysis
 from dotenv import load_dotenv, find_dotenv
 from config.constants import ExperimentConstants, APIConstants
 from scipy.stats import kruskal, mannwhitneyu
@@ -101,6 +102,9 @@ async def run_multiple_experiments(configs: List[ExperimentConfig]) -> List[Tupl
         try:
             results_df, analyses = await run_single_experiment(config)
             results.append((results_df, analyses, config.name))
+            results = run_analysis(results_df, config.dataset_choice)
+            print(f"{results['summary_stats']=}\n{results['ece_mce']=}\n{results['calibration_table']=}\n{results['wrong_confidence']=}")
+            print(f" Experiment '{config.name}' completed successfully!")
         except Exception as e:
             print(f" Experiment '{config.name}' failed: {e}")
             continue

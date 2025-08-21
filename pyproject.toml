@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "datasets>=4.0.0",
+    "jinja2>=3.1.6",
     "langchain-core>=0.3.74",
     "langchain-openai>=0.3.30",
     "matplotlib>=3.10.5",
