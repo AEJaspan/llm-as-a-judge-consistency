@@ -3,13 +3,10 @@ import numpy as np
 import json
 import asyncio
 import argparse
-from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple
 from experiment.classifier import LLMJudge
 from experiment.confidence import ConfidenceExperiment
 from config.base_models import (
-    DatasetChoice, 
-    DATASET_CONFIGS, 
     ExperimentConfig,
     load_experiment_config,
     list_available_configs,
@@ -84,7 +81,7 @@ async def run_single_experiment(config: ExperimentConfig) -> Tuple[pd.DataFrame,
     with open(analyses_filename, "w") as f:
         json.dump(analyses, f, indent=2, default=str)
     
-    print(f"✓ Experiment '{config.name}' completed!")
+    print(f" Experiment '{config.name}' completed!")
     print(f"  Results: {results_filename}")
     print(f"  Analysis: {analyses_filename}")
     print(f"  Plot: {plot_filename}")
@@ -105,7 +102,7 @@ async def run_multiple_experiments(configs: List[ExperimentConfig]) -> List[Tupl
             results_df, analyses = await run_single_experiment(config)
             results.append((results_df, analyses, config.name))
         except Exception as e:
-            print(f"❌ Experiment '{config.name}' failed: {e}")
+            print(f" Experiment '{config.name}' failed: {e}")
             continue
     
     return results
@@ -137,7 +134,7 @@ def test_confidence_format_significance(results_df: pd.DataFrame, experiment_nam
                 )
 
     if not consistency_data:
-        print("❌ No consistency data available for statistical testing")
+        print(" No consistency data available for statistical testing")
         return
 
     consistency_df = pd.DataFrame(consistency_data)
@@ -173,7 +170,7 @@ def test_confidence_format_significance(results_df: pd.DataFrame, experiment_nam
 def compare_experiment_results(experiment_results: List[Tuple[pd.DataFrame, Dict, str]]) -> None:
     """Compare results across multiple experiments"""
     if len(experiment_results) < 2:
-        print("❌ Need at least 2 experiments for comparison")
+        print(" Need at least 2 experiments for comparison")
         return
     
     print(f"\n{'='*60}")
@@ -292,7 +289,7 @@ async def main():
         if args.all:
             configs = load_all_configs(args.config_dir)
             if not configs:
-                print(f"❌ No valid configurations found in {args.config_dir}")
+                print(f" No valid configurations found in {args.config_dir}")
                 return
         elif args.config:
             configs = []
@@ -303,18 +300,18 @@ async def main():
                     config = load_experiment_config(config_path)
                     configs.append(config)
                 except Exception as e:
-                    print(f"❌ Failed to load config '{config_name}': {e}")
+                    print(f" Failed to load config '{config_name}': {e}")
         else:
             # Default: run quick test
             config_path = f"{args.config_dir}/quick_test.yaml"
             configs = [load_experiment_config(config_path)]
             
     except Exception as e:
-        print(f"❌ Error loading configurations: {e}")
+        print(f" Error loading configurations: {e}")
         return
     
     if not configs:
-        print("❌ No valid configurations to run")
+        print(" No valid configurations to run")
         return
     
     print(f"Loaded {len(configs)} experiment configuration(s)")
@@ -326,7 +323,7 @@ async def main():
     test_single_prediction(configs[0])
     
     if args.test_only:
-        print("\n✓ Test completed successfully!")
+        print("\n Test completed successfully!")
         return
     
     # Run experiments
@@ -337,7 +334,7 @@ async def main():
     experiment_results = await run_multiple_experiments(configs)
     
     if not experiment_results:
-        print("❌ No experiments completed successfully")
+        print(" No experiments completed successfully")
         return
     
     # Statistical analysis for each experiment
@@ -352,9 +349,9 @@ async def main():
     print(f"\n{'='*60}")
     print("EXPERIMENT SUITE COMPLETED")
     print(f"{'='*60}")
-    print(f"✓ Successfully completed {len(experiment_results)} experiment(s)")
-    print("✓ Results, analyses, and plots have been generated")
-    print("✓ Use 'make move-assets' to organize files into assets/ directory")
+    print(f" Successfully completed {len(experiment_results)} experiment(s)")
+    print(" Results, analyses, and plots have been generated")
+    print(" Use 'make move-assets' to organize files into assets/ directory")
 
 
 if __name__ == "__main__":
