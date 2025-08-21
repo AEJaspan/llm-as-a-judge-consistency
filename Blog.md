@@ -39,7 +39,7 @@ Key observations from the metrics:
 
 **Finding 7: Models exhibit extreme confidence concentration with limited uncertainty spectrum utilization.**
 
-![LLM Confidence Experiment Results - SMS SPAM Dataset](./llm_confidence_experiment_results_sms_spam.png)
+![LLM Confidence Experiment Results - SMS SPAM Dataset](./assets/plots/llm_confidence_experiment_results_sms_spam.png)
 *Figure 1: Comprehensive confidence analysis showing (a) consistency comparison, (b) calibration quality via Brier scores, (c) confidence distributions, (d) accuracy vs confidence level, (e) accuracy vs mean confidence scatter, and (f) consistency heatmap across model-format combinations.*
 
 **Table 2: Detailed Calibration by Confidence Bins - GPT-4o-mini**
@@ -82,7 +82,7 @@ This perfect performance creates a unique natural experiment:
 
 **Finding 9: Reliability diagrams confirm systematic miscalibration patterns.**
 
-![Reliability Diagrams - SMS SPAM Dataset](./reliability_diagram_sms_spam.png)
+![Reliability Diagrams - SMS SPAM Dataset](./assets/plots/reliability_diagram_sms_spam.png)
 *Figure 2: Reliability diagrams showing calibration curves (blue) against perfect calibration (dashed line) with confidence histograms (gray bars) for each model-format combination. ECE values displayed in each subplot.*
 
 The reliability diagrams reveal:
